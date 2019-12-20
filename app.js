@@ -5,6 +5,11 @@ const https = require('https');
 const express = require('express');
 const mongoose = require('mongoose');
 
+const graphqlhttp = require ('express-graphql');
+const graphqlSchema = require('./graphql/schema');
+const graphqlResolver = require('./graphql/resolvers');
+
+
 const bodyParser = require('body-parser');
 const usersRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
@@ -26,11 +31,26 @@ const MONGODB_URI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO
 const privateKey = fs.readFileSync('server.key');
 const certificate = fs.readFileSync('server.cert');
 
-
-
 app.use(bodyParser.json());
 
+// GRAPHQL
+app.use('/graphql', graphqlhttp({ 
+    schema: graphqlSchema,
+    rootValue: graphqlResolver,
+    graphiql: true,
+    formatError(err) {
+        if (!err.originalError) {
+            return err;
+        }
+        const data = err.originalError.data;
+        const message = err.message || 'An error occurred.';
+        const code = err.originalError.code || 500;
+        return { message: message, status: code, data: data };
 
+    }
+}));
+
+// REST API ROUTES
 app.use(usersRoutes);
 app.use(authRoutes);
 
