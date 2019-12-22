@@ -1,6 +1,9 @@
 const bcrypt = require('bcryptjs');
 const validator = require('validator');
 
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
+
 const User = require('../models/user');
 
 
@@ -29,7 +32,7 @@ module.exports = {
         }
         const existingUser = await User.findOne({ email: userInput.email });
         if (existingUser) {
-            const error = new Error('User exists already');
+            const error = new Error('Email exists already');
             throw error; 
         }
         const permissionLevel = 2;
@@ -62,8 +65,10 @@ module.exports = {
     },
 
     getUser: async function({ id }, request) {
-
-        const user = await User.findById(id);
+        
+        const qrySearch={"_id": new ObjectId(id)};
+        const user = await User.findById(qrySearch);
+        
         if(!user) {
             const error = new Error('User does not exist');
             error.code = 404;
@@ -81,56 +86,60 @@ module.exports = {
 
     updateUser: async function({ id, userInput }, request) {
 
-        const user = await User.findById(id);
+        const errors = [];
+        const qrySearch={"_id": new ObjectId(id)};
+        const user = await User.findById(qrySearch);
+
         if(!user) {
             const error = new Error('User does not exist');
             error.code = 404;
             throw error;
         }
 
-        const errors = [];
-        if(validator.isEmpty(userInput.firstName) || validator.isEmpty(userInput.lastName) || validator.isEmpty(userInput.email || validator.isEmpty(userInput.password) )  ) {
 
-        
+        if (userInput.firstName !== undefined) {
+            user.firstName = userInput.firstName;
             if (validator.isEmpty(userInput.firstName) || !validator.isLength(userInput.firstName, { min: 2 })) {
                 errors.push({ message: 'Firstname must be atleast 2 characters...' });
             }
+        }
+
+        if (userInput.lastName !== undefined) {
+            user.lastName = userInput.lastName;
             if (validator.isEmpty(userInput.lastName) || !validator.isLength(userInput.lastName, { min: 2 })) {
                 errors.push({ message: 'Lastname Must be atleast 2 characters...' });
             }
+        }
+
+        if (userInput.email !== undefined) {
+            user.email = userInput.email;
             if (!validator.isEmail(userInput.email)){
                 errors.push({ message: 'Invalid email' });
-
+    
             }
+        }
+
+        if (userInput.password !== undefined) {
+            user.password = userInput.password;
             if (validator.isEmpty(userInput.password) || !validator.isLength(userInput.password, { min: 2 })) {
                 errors.push({ message: 'Password too short' });
             }
-            if (errors.length > 0) {
-                const error = new Error('Invalid input...');
-                error.data = errors;
-                error.code = 422;
-                throw error;
-            }
-            const existingUser = await User.findOne({ email: userInput.email });
-            if (existingUser) {
-                const error = new Error('User exists already');
-                throw error; 
-            }
         }
-     
-        user.firstName = userInput.firstName;
-        user.lastName = userInput.lastName;
-        user.email = userInput.email;
-        user.password = hashedPassword;
-        const updatedUser = await user.save();
+        const hashedPassword = await bcrypt.hash(userInput.password, 12);
 
+ 
+
+        const updatedUser = await user.save();
         return { ...updatedUser._doc,
-            firstName: updatedUser.firstName,
-            lastName: updatedUser.lastName,
-            email: updatedUser.email,
-            password: updatedUser.password,
-            permissionLevel: updatedUser.permissionLevel
-        } 
+                _id: updatedUser._id.toString(),
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                email: updatedUser.email,
+                password: hashedPassword,
+                permissionLevel: updatedUser.permissionLevel  }
+
+
+
     }
 }
 
