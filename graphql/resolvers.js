@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const validator = require('validator');
+const jwt = require('jsonwebtoken');
 // const { validator, validate } = require('graphql-validation');
 
 const mongoose = require('mongoose');
@@ -7,6 +8,7 @@ const ObjectId = mongoose.Types.ObjectId;
 
 const User = require('../models/user');
 
+let tokenRecords = {};
 
 module.exports = {
     createUser: async function({ userInput }, request) {
@@ -174,6 +176,84 @@ module.exports = {
 
         await User.findByIdAndRemove(id);
         return { message: 'User deleted!', status: 200 }
+    },
+
+    isMatch: async function ({ email, password }) {
+        const user = await User.findOne({ email: email });
+        let activeUser;
+
+        if(!user) {
+            const error = new Error('User does not exist');
+            error.code = 404;
+            throw error;
+        }
+        activeUser = user;
+
+        const isEqual = await bcrypt.compare(password, user.password);
+        if (!isEqual) {
+            const error = new Error('Password is incorrect.');
+            error.code = 401;
+            throw error;
+        }
+        const token = jwt.sign({
+            email: activeUser.email,
+            userId: activeUser._id.toString(),
+            permissionLevel: activeUser.permissionLevel
+        }, 'mysecretprivatekey', { expiresIn: '1hr' });
+
+        const refreshToken = jwt.sign({
+            email: activeUser.email,
+            userId: activeUser._id.toString(),
+            permissionLevel: activeUser.permissionLevel
+        }, 'mysecretprivaterefreshkey', { expiresIn: '24hr' });
+
+
+        const myTokens = {
+            "token": token,
+            "refreshToken": refreshToken
+        }
+        tokenRecords[refreshToken] = myTokens;
+        return { token: myTokens.token, refreshToken: myTokens.refreshToken }
+    },
+
+    getNewToken: async function ({ email, refreshToken }) {
+        const user = await User.findOne({ email: email });
+        let activeUser;
+
+        if(!user) {
+            const error = new Error('User does not exist');
+            error.code = 404;
+            throw error;
+        }
+        activeUser = user;
+
+        if((refreshToken) && (refreshToken in tokenRecords)) {
+            const token =  jwt.sign({
+                email: activeUser.email,
+                userId: activeUser._id.toString(),
+                permissionLevel: activeUser.permissionLevel
+            },
+            'mysecretprivatekey', { expiresIn: '1h' });
+
+            
+            const changeResponse = {
+                "token": token
+            }
+            console.log(token);
+            tokenRecords[refreshToken].token = token;
+
+            console.log(tokenRecords[refreshToken].token);
+            return { token: changeResponse.token}
+
+        }
+        else {
+            const error = new Error('Invalid token!');
+            error.code = 500;
+            throw error;
+        }
+
+                
+        
     }
 }
 

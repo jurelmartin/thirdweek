@@ -24,10 +24,22 @@ module.exports = buildSchema(`
     type UsersData {
         users: [User!]!
     }
+
+    type isAuth {
+        token: String
+        refreshToken: String
+    }
+
+    type tokenHolder {
+        token: String!
+    }
+  
     
     type RootQuery {
         getUsers: UsersData!        
         getUser(id: ID!): User!
+        isMatch(email: String, password: String): isAuth!
+        getNewToken(email: String, refreshToken: String): tokenHolder!
     }
 
     type RootMutation {
