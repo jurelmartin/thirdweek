@@ -26,7 +26,8 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan('combined', { stream: accessLogStream }));
 
-const MONGODB_URI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-ibwkk.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`;
+const MONGODB_URI = `mongodb://thirdweek:xDztVmUhJKMIiFT2@cluster0-shard-00-00-ibwkk.mongodb.net:27017,cluster0-shard-00-01-ibwkk.mongodb.net:27017,cluster0-shard-00-02-ibwkk.mongodb.net:27017/restapi?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority`;
+// const MONGODB_URI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-ibwkk.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`;
 
 const privateKey = fs.readFileSync('server.key');
 const certificate = fs.readFileSync('server.cert');

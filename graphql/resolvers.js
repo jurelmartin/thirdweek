@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const validator = require('validator');
+// const { validator, validate } = require('graphql-validation');
 
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
@@ -67,7 +68,7 @@ module.exports = {
     getUser: async function({ id }, request) {
         
         const qrySearch={"_id": new ObjectId(id)};
-        const user = await User.findById(qrySearch);
+        const user = await User.findById(id);
         
         if(!user) {
             const error = new Error('User does not exist');
@@ -84,18 +85,23 @@ module.exports = {
         }
     },
 
+
+
     updateUser: async function({ id, userInput }, request) {
 
-        const errors = [];
         const qrySearch={"_id": new ObjectId(id)};
         const user = await User.findById(qrySearch);
+
+        let defaultPassword = await user.password;
+        // console.log(defaultPassword);
+        const errors = [];
+
 
         if(!user) {
             const error = new Error('User does not exist');
             error.code = 404;
             throw error;
         }
-
 
         if (userInput.firstName !== undefined) {
             user.firstName = userInput.firstName;
@@ -125,21 +131,49 @@ module.exports = {
                 errors.push({ message: 'Password too short' });
             }
         }
-        const hashedPassword = await bcrypt.hash(userInput.password, 12);
+        
 
- 
+
+        if (errors.length > 0) {
+            const error = new Error('Invalid input...');
+            error.data = errors;
+            error.code = 422;
+            throw error;
+        }
+
+        
+        if (userInput.password) {
+            const hashedPassword = await bcrypt.hash(userInput.password, 12);
+            defaultPassword = await hashedPassword;
+
+        }
+        user.password = defaultPassword;
 
         const updatedUser = await user.save();
+
         return { ...updatedUser._doc,
                 _id: updatedUser._id.toString(),
                 firstName: updatedUser.firstName,
                 lastName: updatedUser.lastName,
                 email: updatedUser.email,
-                password: hashedPassword,
+                password: updatedUser.password,
                 permissionLevel: updatedUser.permissionLevel  }
+    },
 
+    deleteUser: async function ({ id }, request) {
+        const qrySearch={"_id": new ObjectId(id)};
+        const user = await User.findById(qrySearch);
 
+     
+        console.log(user);
+        if(!user) {
+            const error = new Error('User does not exist');
+            error.code = 404;
+            throw error;
+        }
 
+        await User.findByIdAndRemove(id);
+        return { message: 'User deleted!', status: 200 }
     }
 }
 
