@@ -52,6 +52,11 @@ module.exports = {
     },
 
     getUsers: async function(args, request) {
+        if(!request.isAuth) {
+            const error = new Error('Not authenticated!');
+            error.code = 401;
+            throw error;
+        }
  
         const users = await User.find();
         return { users: users.map(users => {
@@ -68,6 +73,11 @@ module.exports = {
     },
 
     getUser: async function({ id }, request) {
+        if(!request.isAuth) {
+            const error = new Error('Not authenticated!');
+            error.code = 401;
+            throw error;
+        }
         
         const qrySearch={"_id": new ObjectId(id)};
         const user = await User.findById(id);
@@ -86,8 +96,6 @@ module.exports = {
             permissionLevel: user.permissionLevel
         }
     },
-
-
 
     updateUser: async function({ id, userInput }, request) {
 
@@ -163,6 +171,13 @@ module.exports = {
     },
 
     deleteUser: async function ({ id }, request) {
+
+        if(!request.isAuth) {
+            const error = new Error('Not authenticated!');
+            error.code = 401;
+            throw error;
+        }
+
         const qrySearch={"_id": new ObjectId(id)};
         const user = await User.findById(qrySearch);
 

@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const graphqlhttp = require ('express-graphql');
 const graphqlSchema = require('./graphql/schema');
 const graphqlResolver = require('./graphql/resolvers');
+const graphqlValidation = require('./middleware/gqlAuthValidation');
 
 
 const bodyParser = require('body-parser');
@@ -33,6 +34,8 @@ const privateKey = fs.readFileSync('server.key');
 const certificate = fs.readFileSync('server.cert');
 
 app.use(bodyParser.json());
+
+app.use(graphqlValidation);
 
 // GRAPHQL
 app.use('/graphql', graphqlhttp({ 
