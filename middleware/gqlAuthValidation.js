@@ -21,6 +21,7 @@ module.exports = (request, response, next) => {
   request.userId = decodedToken.userId;
   request.permissionLevel = decodedToken.permissionLevel;
   request.isAuth = true;
-  console.log(request.permissionLevel);
+
   next();
+
 };

@@ -10,6 +10,7 @@ const User = require('../models/user');
 
 let tokenRecords = {};
 
+
 module.exports = {
     createUser: async function({ userInput }, request) {
 
@@ -52,29 +53,40 @@ module.exports = {
     },
 
     getUsers: async function(args, request) {
-        if(!request.isAuth) {
-            const error = new Error('Not authenticated!');
+ 
+        if (request.permissionLevel === 1) {
+            const users = await User.find();
+            return { users: users.map(users => {
+                return {...users._doc,  
+                    _id: users._id.toString(),
+                    firstName: users.firstName,
+                    lastName: users.lastName,
+                    email: users.email,
+                    password: users.password,
+                    permissionLevel: users.permissionLevel
+                }
+            })};
+        }
+
+        else {
+            const error = new Error('Not Authorized!');
             error.code = 401;
             throw error;
         }
  
-        const users = await User.find();
-        return { users: users.map(users => {
-            return {...users._doc,  
-                _id: users._id.toString(),
-                firstName: users.firstName,
-                lastName: users.lastName,
-                email: users.email,
-                password: users.password,
-                permissionLevel: users.permissionLevel
-            }
-        })};
+
 
     },
 
     getUser: async function({ id }, request) {
         if(!request.isAuth) {
             const error = new Error('Not authenticated!');
+            error.code = 401;
+            throw error;
+        }
+
+        if (request.permissionLevel !== 1) {
+            const error = new Error('Not Authorized!');
             error.code = 401;
             throw error;
         }
@@ -98,20 +110,31 @@ module.exports = {
     },
 
     updateUser: async function({ id, userInput }, request) {
+        if(!request.isAuth) {
+            const error = new Error('Not authenticated!');
+            error.code = 401;
+            throw error;
+        }
 
         const qrySearch={"_id": new ObjectId(id)};
         const user = await User.findById(qrySearch);
-
-        let defaultPassword = await user.password;
-        // console.log(defaultPassword);
-        const errors = [];
-
 
         if(!user) {
             const error = new Error('User does not exist');
             error.code = 404;
             throw error;
         }
+
+        if (request.permissionLevel !== 1 && request.userId != user._id) {
+            const error = new Error('Not Authorized!!');
+            error.code = 401;
+            throw error;
+        }
+
+
+        let defaultPassword = await user.password;
+
+        const errors = [];
 
         if (userInput.firstName !== undefined) {
             user.firstName = userInput.firstName;
@@ -142,8 +165,6 @@ module.exports = {
             }
         }
         
-
-
         if (errors.length > 0) {
             const error = new Error('Invalid input...');
             error.data = errors;
@@ -151,12 +172,19 @@ module.exports = {
             throw error;
         }
 
-        
         if (userInput.password) {
             const hashedPassword = await bcrypt.hash(userInput.password, 12);
             defaultPassword = await hashedPassword;
 
         }
+
+        if (userInput.permissionLevel !== undefined){
+            const error = new Error('Not Authorized!!');
+            error.code = 401;
+            throw error;
+        }
+
+
         user.password = defaultPassword;
 
         const updatedUser = await user.save();
@@ -168,12 +196,20 @@ module.exports = {
                 email: updatedUser.email,
                 password: updatedUser.password,
                 permissionLevel: updatedUser.permissionLevel  }
+
+ 
     },
 
     deleteUser: async function ({ id }, request) {
 
         if(!request.isAuth) {
             const error = new Error('Not authenticated!');
+            error.code = 401;
+            throw error;
+        }
+
+        if (request.permissionLevel !== 1) {
+            const error = new Error('Not Authorized!');
             error.code = 401;
             throw error;
         }
@@ -231,9 +267,10 @@ module.exports = {
         return { token: myTokens.token, refreshToken: myTokens.refreshToken }
     },
 
-    getNewToken: async function ({ email, refreshToken }) {
+    getNewToken: async function ({ email, refreshToken }, request) {
         const user = await User.findOne({ email: email });
         let activeUser;
+
 
         if(!user) {
             const error = new Error('User does not exist');
@@ -243,6 +280,7 @@ module.exports = {
         activeUser = user;
 
         if((refreshToken) && (refreshToken in tokenRecords)) {
+
             const token =  jwt.sign({
                 email: activeUser.email,
                 userId: activeUser._id.toString(),
@@ -254,9 +292,12 @@ module.exports = {
             const changeResponse = {
                 "token": token
             }
-            console.log(token);
-            tokenRecords[refreshToken].token = token;
-
+            let newDecodedToken;
+            //tokenRecords[refreshToken].token = token;
+            newDecodedToken = jwt.verify(changeResponse.token, 'mysecretprivatekey');
+            request.userId = newDecodedToken.userId;
+            request.permissionLevel = newDecodedToken.permissionLevel;
+            
             console.log(tokenRecords[refreshToken].token);
             return { token: changeResponse.token}
 

@@ -9,7 +9,7 @@ const graphqlhttp = require ('express-graphql');
 const graphqlSchema = require('./graphql/schema');
 const graphqlResolver = require('./graphql/resolvers');
 const graphqlValidation = require('./middleware/gqlAuthValidation');
-
+const authValid = require('./middleware/authValidation');
 
 const bodyParser = require('body-parser');
 const usersRoutes = require('./routes/users');
