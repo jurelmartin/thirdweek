@@ -51,7 +51,7 @@ exports.getUsers = async (request, response, next) => {
 };
 
 exports.getUser = async (request, response, next) => {
-    const userId = request.params.userId;
+    const userId = await request.params.userId;
     const user = await User.findById(userId);
     try {
         if (!user) {
