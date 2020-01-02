@@ -55,11 +55,9 @@ exports.getUser = async (request, response, next) => {
     const user = await User.findById(userId);
     try {
         if (!user) {
-            const error = new Error('Could not find user...');
-            error.statusCode = 404;
-            throw error;
+            return response.status(401).json({ message: 'Could not find user...' });
         }
-        response.status(200).json(user);
+        return response.status(200).json(user);
     }
     catch (err) {
         if (!err.statusCode) {
