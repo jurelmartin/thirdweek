@@ -41,7 +41,7 @@ router.post('/users', [
 
 router.get('/users', authValid, authPermission.adminPermission, usersController.getUsers);
 
-router.get('/users/:userId', usersController.getUser);
+router.get('/users/:userId', authPermission.adminPermission, usersController.getUser);
 
 router.patch('/users/:userId', [
     body('firstName')
